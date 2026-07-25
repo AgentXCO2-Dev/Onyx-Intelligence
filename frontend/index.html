@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Onyx AI</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0b0b0e;
+      color: #e4e4e7;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .app {
+      width: 100%;
+      max-width: 800px;
+      height: 90vh;
+      background: #141417;
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid #2a2a2e;
+    }
+    .header {
+      padding: 20px 28px;
+      background: #1a1a1e;
+      border-bottom: 1px solid #2a2a2e;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #c0c0c0, #6b6b6b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .badge {
+      background: #2a2a2e;
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #a0a0a0;
+    }
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+    }
+    #messages::-webkit-scrollbar { width: 4px; }
+    #messages::-webkit-scrollbar-thumb { background: #3a3a3e; border-radius: 10px; }
+    .message {
+      padding: 12px 18px;
+      border-radius: 16px;
+      max-width: 80%;
+      line-height: 1.6;
+      word-wrap: break-word;
+      animation: fadeUp 0.25s ease;
+    }
+    .message.user {
+      background: #2a2a30;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+      color: #f0f0f0;
+    }
+    .message.assistant {
+      background: #1e1e24;
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+      color: #d4d4d8;
+      border: 1px solid #2a2a2e;
+    }
+    .message.assistant::before { content: "🖤 "; font-weight: 600; }
+    .input-area {
+      padding: 16px 24px 24px;
+      background: #141417;
+      border-top: 1px solid #2a2a2e;
+      display: flex;
+      gap: 12px;
+    }
+    #userInput {
+      flex: 1;
+      background: #1e1e24;
+      border: 1px solid #2e2e34;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 15px;
+      color: #f0f0f0;
+      outline: none;
+      transition: 0.2s;
+      resize: none;
+      font-family: inherit;
+    }
+    #userInput:focus {
+      border-color: #5a5a66;
+      box-shadow: 0 0 0 3px rgba(100,100,120,0.15);
+    }
+    #sendBtn {
+      background: #2e2e34;
+      border: none;
+      border-radius: 14px;
+      padding: 0 28px;
+      font-weight: 700;
+      font-size: 15px;
+      color: #f0f0f0;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    #sendBtn:hover { background: #3e3e46; transform: scale(1.02); }
+    #sendBtn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header"><h1>⚫ ONYX</h1><span class="badge">Mistral · streaming</span></div>
+    <div id="messages">
+      <div class="message assistant">Hello, I'm Onyx. Ask me anything!</div>
+    </div>
+    <div class="input-area">
+      <textarea id="userInput" rows="1" placeholder="Type your message..."></textarea>
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+  <script>
+    const messagesDiv = document.getElementById('messages');
+    const input = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    input.addEventListener('input', () => {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+    sendBtn.addEventListener('click', sendMessage);
+
+    function addMessage(role, content) {
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+      div.textContent = content;
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      return div;
+    }
+
+    async function sendMessage() {
+      const text = input.value.trim();
+      if (!text) return;
+      sendBtn.disabled = true;
+      input.disabled = true;
+
+      addMessage('user', text);
+      input.value = '';
+      input.style.height = 'auto';
+
+      const assistantMsg = addMessage('assistant', '');
+
+      try {
+        // 🔥 Your live Render backend URL - hardcoded and ready
+        const backendURL = 'https://onyx-intelligence-5p3i.onrender.com/api/chat';
+
+        const response = await fetch(backendURL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text }),
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const payload = line.slice(6);
+              if (payload === '[DONE]') continue;
+              try {
+                const json = JSON.parse(payload);
+                if (json.content) {
+                  assistantMsg.textContent += json.content;
+                  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                }
+                if (json.error) assistantMsg.textContent = '⚠️ ' + json.error;
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (error) {
+        assistantMsg.textContent = '❌ Failed to connect. Check if backend is live.';
+      }
+      sendBtn.disabled = false;
+      input.disabled = false;
+      input.focus();
+    }
+  </script>
+</body>
+</html>
