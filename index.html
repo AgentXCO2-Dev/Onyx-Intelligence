@@ -3,189 +3,676 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Onyx AI</title>
+  <title>Onyx AI v3.0</title>
+  <!-- Markdown & Highlight.js -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <style>
+    /* ----- GLOBAL ----- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: #0b0b0e;
-      color: #e4e4e7;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
       height: 100vh;
       display: flex;
-      justify-content: center;
-      align-items: center;
+      overflow: hidden;
+      transition: background 0.3s, color 0.3s;
     }
-    .app {
-      width: 100%;
-      max-width: 800px;
-      height: 90vh;
-      background: #141417;
-      border-radius: 24px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    body.light {
+      background: #f6f8fa;
+      color: #1f2328;
+    }
+    body.light .sidebar { background: #ffffff; border-right: 1px solid #d0d7de; }
+    body.light .main-chat { background: #f6f8fa; }
+    body.light .chat-header { border-bottom: 1px solid #d0d7de; }
+    body.light .message.user { background: #d0d7de; color: #1f2328; }
+    body.light .message.assistant { background: #ffffff; border: 1px solid #d0d7de; color: #1f2328; }
+    body.light .input-area { border-top: 1px solid #d0d7de; background: #f6f8fa; }
+    body.light .input-wrapper { background: #ffffff; border-color: #d0d7de; }
+    body.light #userInput { color: #1f2328; }
+    body.light #userInput::placeholder { color: #8b949e; }
+    body.light .status-badge { background: #e1e4e8; color: #24292f; }
+    body.light .sidebar-footer { color: #8b949e; border-top-color: #d0d7de; }
+    body.light .toggle-label { color: #1f2328; }
+    body.light .new-chat-btn { background: #2da44e; }
+    body.light .new-chat-btn:hover { background: #2c974b; }
+    body.light #sendBtn { background: #2da44e; }
+    body.light #sendBtn:hover { background: #2c974b; }
+
+    /* ----- SIDEBAR ----- */
+    .sidebar {
+      width: 280px;
+      background: #161b22;
+      border-right: 1px solid #30363d;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
-      border: 1px solid #2a2a2e;
+      padding: 20px 16px;
+      flex-shrink: 0;
+      transition: transform 0.3s ease;
+      overflow-y: auto;
     }
-    .header {
-      padding: 20px 28px;
-      background: #1a1a1e;
-      border-bottom: 1px solid #2a2a2e;
+    .sidebar-header {
       display: flex;
       align-items: center;
-      gap: 12px;
+      justify-content: space-between;
+      margin-bottom: 20px;
     }
-    .header h1 {
-      font-size: 22px;
+    .sidebar-header h2 {
+      font-size: 20px;
       font-weight: 700;
-      letter-spacing: -0.5px;
-      background: linear-gradient(135deg, #c0c0c0, #6b6b6b);
+      background: linear-gradient(135deg, #f0f6fc, #8b949e);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    .badge {
-      background: #2a2a2e;
-      padding: 4px 12px;
-      border-radius: 100px;
-      font-size: 11px;
-      font-weight: 600;
-      color: #a0a0a0;
+    .theme-toggle {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #e6edf3;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: 0.2s;
     }
+    .theme-toggle:hover { background: #30363d; }
+    body.light .theme-toggle { color: #1f2328; }
+    body.light .theme-toggle:hover { background: #e1e4e8; }
+
+    .new-chat-btn {
+      background: #238636;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: 0.2s;
+      width: 100%;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .new-chat-btn:hover { background: #2ea043; transform: scale(1.02); }
+
+    .personality-section {
+      margin-bottom: 20px;
+    }
+    .personality-section label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #8b949e;
+      margin-bottom: 6px;
+    }
+    .personality-section textarea {
+      width: 100%;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #e6edf3;
+      font-size: 13px;
+      resize: vertical;
+      min-height: 80px;
+      font-family: inherit;
+      transition: 0.2s;
+    }
+    .personality-section textarea:focus {
+      border-color: #58a6ff;
+      outline: none;
+    }
+    .personality-section button {
+      margin-top: 6px;
+      background: #21262d;
+      border: none;
+      color: #c9d1d9;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .personality-section button:hover { background: #30363d; }
+
+    .memory-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+    .memory-toggle input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #238636;
+      cursor: pointer;
+    }
+    .memory-toggle label { cursor: pointer; }
+
+    .sidebar-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .sidebar-actions button {
+      flex: 1;
+      background: #21262d;
+      border: none;
+      color: #c9d1d9;
+      padding: 6px 0;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: 0.2s;
+      min-width: 60px;
+    }
+    .sidebar-actions button:hover { background: #30363d; }
+
+    .sidebar-footer {
+      margin-top: auto;
+      font-size: 12px;
+      color: #484f58;
+      border-top: 1px solid #30363d;
+      padding-top: 12px;
+      text-align: center;
+    }
+
+    /* ----- MAIN CHAT ----- */
+    .main-chat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #0d1117;
+      position: relative;
+    }
+    .chat-header {
+      padding: 16px 32px;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .chat-header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+    .chat-header h1 span { color: #58a6ff; }
+    .status-badge {
+      font-size: 12px;
+      background: #21262d;
+      padding: 4px 12px;
+      border-radius: 20px;
+      color: #8b949e;
+    }
+
+    /* ----- MESSAGES ----- */
     #messages {
       flex: 1;
       overflow-y: auto;
-      padding: 24px 28px;
+      padding: 24px 32px;
       display: flex;
       flex-direction: column;
       gap: 16px;
       scroll-behavior: smooth;
     }
-    #messages::-webkit-scrollbar { width: 4px; }
-    #messages::-webkit-scrollbar-thumb { background: #3a3a3e; border-radius: 10px; }
+    #messages::-webkit-scrollbar { width: 6px; }
+    #messages::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
+
     .message {
-      padding: 12px 18px;
+      max-width: 85%;
+      padding: 14px 20px;
       border-radius: 16px;
-      max-width: 80%;
       line-height: 1.6;
       word-wrap: break-word;
-      animation: fadeUp 0.25s ease;
+      animation: fadeUp 0.3s ease;
+      font-size: 15px;
     }
     .message.user {
-      background: #2a2a30;
+      background: #1f2937;
       align-self: flex-end;
       border-bottom-right-radius: 4px;
-      color: #f0f0f0;
+      color: #f0f6fc;
     }
     .message.assistant {
-      background: #1e1e24;
+      background: #161b22;
       align-self: flex-start;
       border-bottom-left-radius: 4px;
-      color: #d4d4d8;
-      border: 1px solid #2a2a2e;
+      border: 1px solid #30363d;
+      color: #e6edf3;
     }
-    .message.assistant::before { content: "🖤 "; font-weight: 600; }
+    .message.assistant h1, .message.assistant h2, .message.assistant h3 { margin: 12px 0 6px 0; }
+    .message.assistant p { margin: 6px 0; }
+    .message.assistant ul, .message.assistant ol { padding-left: 24px; margin: 6px 0; }
+    .message.assistant code:not(pre code) {
+      background: #1a1f2a;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #f0883e;
+    }
+    .message.assistant pre {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 12px;
+      margin: 10px 0;
+      position: relative;
+      overflow-x: auto;
+    }
+    .message.assistant pre code {
+      font-size: 14px;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+    .code-actions {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      gap: 6px;
+    }
+    .code-actions button {
+      background: #21262d;
+      color: #c9d1d9;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      opacity: 0.6;
+      transition: 0.2s;
+    }
+    .code-actions button:hover { opacity: 1; background: #30363d; }
+
+    /* ----- INPUT AREA ----- */
     .input-area {
-      padding: 16px 24px 24px;
-      background: #141417;
-      border-top: 1px solid #2a2a2e;
+      padding: 16px 32px 28px;
+      background: #0d1117;
+      border-top: 1px solid #21262d;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .input-row {
       display: flex;
       gap: 12px;
+      align-items: flex-end;
+    }
+    .input-wrapper {
+      flex: 1;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      display: flex;
+      align-items: flex-end;
+      transition: 0.2s;
+      padding: 8px 8px 8px 16px;
+    }
+    .input-wrapper:focus-within {
+      border-color: #58a6ff;
+      box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
     }
     #userInput {
       flex: 1;
-      background: #1e1e24;
-      border: 1px solid #2e2e34;
-      border-radius: 14px;
-      padding: 14px 18px;
+      background: transparent;
+      border: none;
+      padding: 10px 0;
       font-size: 15px;
-      color: #f0f0f0;
+      color: #f0f6fc;
       outline: none;
-      transition: 0.2s;
       resize: none;
       font-family: inherit;
+      max-height: 150px;
     }
-    #userInput:focus {
-      border-color: #5a5a66;
-      box-shadow: 0 0 0 3px rgba(100,100,120,0.15);
-    }
+    #userInput::placeholder { color: #484f58; }
     #sendBtn {
-      background: #2e2e34;
+      background: #238636;
       border: none;
-      border-radius: 14px;
-      padding: 0 28px;
-      font-weight: 700;
-      font-size: 15px;
-      color: #f0f0f0;
+      border-radius: 8px;
+      padding: 10px 22px;
+      font-weight: 600;
+      font-size: 14px;
+      color: white;
+      cursor: pointer;
+      transition: 0.2s;
+      white-space: nowrap;
+      margin: 4px;
+    }
+    #sendBtn:hover { background: #2ea043; }
+    #sendBtn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .input-controls {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .input-controls label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #8b949e;
+      cursor: pointer;
+    }
+    .input-controls input[type="checkbox"] {
+      accent-color: #238636;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+    .file-upload-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    .file-upload-wrapper input[type="file"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+    .file-upload-wrapper button {
+      background: #21262d;
+      border: none;
+      color: #c9d1d9;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 13px;
       cursor: pointer;
       transition: 0.2s;
     }
-    #sendBtn:hover { background: #3e3e46; transform: scale(1.02); }
-    #sendBtn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+    .file-upload-wrapper button:hover { background: #30363d; }
+    .file-name {
+      font-size: 12px;
+      color: #58a6ff;
+      margin-left: 6px;
+    }
+
+    /* ----- TYPING ----- */
+    .typing-indicator {
+      align-self: flex-start;
+      padding: 8px 16px;
+      color: #8b949e;
+      font-size: 14px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:0.5;} 50%{opacity:1;} }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+    /* ----- MOBILE ----- */
+    .hamburger { display: none; background:none; border:none; color:#f0f6fc; font-size:24px; cursor:pointer; }
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 100;
+        transform: translateX(-100%);
+        width: 280px;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .main-chat { width: 100%; }
+      .hamburger { display: flex !important; }
+      .chat-header { padding: 12px 16px; }
+      #messages { padding: 16px; }
+      .input-area { padding: 12px 16px 20px; }
     }
   </style>
 </head>
 <body>
-  <div class="app">
-    <div class="header"><h1>⚫ ONYX</h1><span class="badge">Mistral · streaming</span></div>
-    <div id="messages">
-      <div class="message assistant">Hello, I'm Onyx. Ask me anything!</div>
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>⚫ ONYX</h2>
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
     </div>
+    <button class="new-chat-btn" id="newChatBtn">✨ New Chat</button>
+
+    <div class="personality-section">
+      <label for="personalityInput">🧠 Personality (System Prompt)</label>
+      <textarea id="personalityInput" placeholder="Enter custom system prompt..."></textarea>
+      <button id="savePersonalityBtn">Save Personality</button>
+    </div>
+
+    <div class="memory-toggle">
+      <input type="checkbox" id="memoryToggle" checked />
+      <label for="memoryToggle">🧠 Memory (Session)</label>
+    </div>
+
+    <div class="sidebar-actions">
+      <button id="exportChatBtn">📥 Export Chat</button>
+      <button id="clearMemoryBtn">🗑️ Clear Memory</button>
+    </div>
+
+    <div class="sidebar-footer">Onyx v3.0 · Memory Enabled</div>
+  </div>
+
+  <!-- MAIN CHAT -->
+  <div class="main-chat">
+    <div class="chat-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="hamburger" id="hamburgerBtn">☰</button>
+        <h1>⚫ <span>Onyx</span></h1>
+      </div>
+      <span class="status-badge">● Online</span>
+    </div>
+
+    <div id="messages">
+      <div class="message assistant">Hello, I'm **Onyx v3.0**. I have memory, can search the web, think step‑by‑step, read files, and adapt to your personality. How can I help?</div>
+    </div>
+
     <div class="input-area">
-      <textarea id="userInput" rows="1" placeholder="Type your message..."></textarea>
-      <button id="sendBtn">Send</button>
+      <div class="input-row">
+        <div class="input-wrapper">
+          <textarea id="userInput" rows="1" placeholder="Ask me anything..."></textarea>
+          <button id="sendBtn">Send</button>
+        </div>
+      </div>
+      <div class="input-controls">
+        <label><input type="checkbox" id="thinkToggle" /> 🤔 Think</label>
+        <label><input type="checkbox" id="searchToggle" /> 🌐 Search</label>
+        <div class="file-upload-wrapper">
+          <button>📎 Upload File</button>
+          <input type="file" id="fileInput" />
+        </div>
+        <span class="file-name" id="fileName"></span>
+      </div>
     </div>
   </div>
+
   <script>
+    // ===== CONFIG =====
+    const BACKEND_URL = 'https://onyx-intelligence-5p3i.onrender.com/api/chat';
+    const SYSTEM_URL = 'https://onyx-intelligence-5p3i.onrender.com/api/system';
+    const CLEAR_URL = 'https://onyx-intelligence-5p3i.onrender.com/api/clear';
+    const EXPORT_URL = 'https://onyx-intelligence-5p3i.onrender.com/api/memory';
+
+    // ===== DOM REFS =====
     const messagesDiv = document.getElementById('messages');
     const input = document.getElementById('userInput');
     const sendBtn = document.getElementById('sendBtn');
+    const newChatBtn = document.getElementById('newChatBtn');
+    const clearMemoryBtn = document.getElementById('clearMemoryBtn');
+    const exportChatBtn = document.getElementById('exportChatBtn');
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const sidebar = document.getElementById('sidebar');
+    const themeToggle = document.getElementById('themeToggle');
+    const personalityInput = document.getElementById('personalityInput');
+    const savePersonalityBtn = document.getElementById('savePersonalityBtn');
+    const memoryToggle = document.getElementById('memoryToggle');
+    const thinkToggle = document.getElementById('thinkToggle');
+    const searchToggle = document.getElementById('searchToggle');
+    const fileInput = document.getElementById('fileInput');
+    const fileName = document.getElementById('fileName');
 
+    let fileContent = null;
+
+    // ===== THEME =====
+    let darkMode = true;
+    themeToggle.addEventListener('click', () => {
+      darkMode = !darkMode;
+      document.body.classList.toggle('light', !darkMode);
+      themeToggle.textContent = darkMode ? '🌙' : '☀️';
+    });
+
+    // ===== SIDEBAR TOGGLE (Mobile) =====
+    hamburgerBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth <= 768) {
+        if (!sidebar.contains(e.target) && e.target !== hamburgerBtn) {
+          sidebar.classList.remove('open');
+        }
+      }
+    });
+
+    // ===== INPUT =====
     input.addEventListener('input', () => {
       input.style.height = 'auto';
-      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+      input.style.height = Math.min(input.scrollHeight, 150) + 'px';
     });
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
     });
     sendBtn.addEventListener('click', sendMessage);
 
+    // ===== FILE UPLOAD =====
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) { fileName.textContent = ''; fileContent = null; return; }
+      fileName.textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        fileContent = ev.target.result;
+      };
+      reader.readAsText(file);
+    });
+
+    // ===== RENDER MARKDOWN =====
+    function renderMarkdown(text) {
+      const rawHtml = marked.parse(text);
+      const temp = document.createElement('div');
+      temp.innerHTML = rawHtml;
+      temp.querySelectorAll('pre code').forEach((block) => {
+        const pre = block.parentElement;
+        // Add copy and download buttons
+        const actions = document.createElement('div');
+        actions.className = 'code-actions';
+        const copyBtn = document.createElement('button');
+        copyBtn.textContent = 'Copy';
+        copyBtn.onclick = () => {
+          navigator.clipboard.writeText(block.textContent);
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+        };
+        const downloadBtn = document.createElement('button');
+        downloadBtn.textContent = 'Download';
+        downloadBtn.onclick = () => {
+          const blob = new Blob([block.textContent], { type: 'text/plain' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'code.txt';
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+        actions.appendChild(copyBtn);
+        actions.appendChild(downloadBtn);
+        pre.style.position = 'relative';
+        pre.prepend(actions);
+        hljs.highlightElement(block);
+      });
+      return temp.innerHTML;
+    }
+
+    // ===== ADD MESSAGE =====
     function addMessage(role, content) {
       const div = document.createElement('div');
       div.className = `message ${role}`;
-      div.textContent = content;
+      if (role === 'assistant') {
+        div.innerHTML = renderMarkdown(content);
+      } else {
+        div.textContent = content;
+      }
       messagesDiv.appendChild(div);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
       return div;
     }
 
+    // ===== SEND MESSAGE =====
     async function sendMessage() {
       const text = input.value.trim();
-      if (!text) return;
+      if (!text && !fileContent) return;
+
       sendBtn.disabled = true;
       input.disabled = true;
 
-      addMessage('user', text);
+      // Show user message (combine text and file info)
+      let displayMsg = text || '📎 Uploaded file';
+      if (fileContent) displayMsg += `\n📎 File: ${fileName.textContent || 'uploaded file'}`;
+      addMessage('user', displayMsg);
+
+      // Prepare payload
+      const payload = {
+        message: text,
+        thinking: thinkToggle.checked,
+        search: searchToggle.checked,
+        fileContent: fileContent || null,
+        useMemory: memoryToggle.checked
+      };
+
+      // Clear file after sending
+      fileInput.value = '';
+      fileName.textContent = '';
+      fileContent = null;
+
       input.value = '';
       input.style.height = 'auto';
 
+      // Typing indicator
+      const typingDiv = document.createElement('div');
+      typingDiv.className = 'typing-indicator';
+      typingDiv.textContent = 'Onyx is thinking...';
+      messagesDiv.appendChild(typingDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
       const assistantMsg = addMessage('assistant', '');
+      typingDiv.remove();
 
       try {
-        // 🔥 Your live Render backend URL - hardcoded and ready
-        const backendURL = 'https://onyx-intelligence-5p3i.onrender.com/api/chat';
-
-        const response = await fetch(backendURL, {
+        const response = await fetch(BACKEND_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text }),
+          body: JSON.stringify(payload),
         });
+
+        if (!response.ok) {
+          const err = await response.json();
+          assistantMsg.innerHTML = `⚠️ ${err.error || 'Something went wrong.'}`;
+          sendBtn.disabled = false;
+          input.disabled = false;
+          input.focus();
+          return;
+        }
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        let fullContent = '';
 
         while (true) {
           const { done, value } = await reader.read();
@@ -200,20 +687,78 @@
               try {
                 const json = JSON.parse(payload);
                 if (json.content) {
-                  assistantMsg.textContent += json.content;
+                  fullContent += json.content;
+                  assistantMsg.innerHTML = renderMarkdown(fullContent);
                   messagesDiv.scrollTop = messagesDiv.scrollHeight;
                 }
-                if (json.error) assistantMsg.textContent = '⚠️ ' + json.error;
-              } catch (e) {}
+                if (json.error) {
+                  assistantMsg.innerHTML = `⚠️ ${json.error}`;
+                }
+              } catch (e) { /* skip incomplete json */ }
             }
           }
         }
       } catch (error) {
-        assistantMsg.textContent = '❌ Failed to connect. Check if backend is live.';
+        assistantMsg.innerHTML = '❌ Failed to connect to backend. Ensure Render is awake.';
+        console.error(error);
       }
+
       sendBtn.disabled = false;
       input.disabled = false;
       input.focus();
+    }
+
+    // ===== NEW CHAT (Clear UI only) =====
+    function newChat() {
+      if (messagesDiv.children.length > 1 && !confirm('Start a new chat? (Memory will be cleared)')) return;
+      // Clear backend memory
+      fetch(CLEAR_URL, { method: 'POST' }).catch(() => {});
+      // Clear UI
+      messagesDiv.innerHTML = '';
+      addMessage('assistant', 'Memory cleared. How can I help you?');
+      sidebar.classList.remove('open');
+    }
+    newChatBtn.addEventListener('click', newChat);
+    clearMemoryBtn.addEventListener('click', newChat);
+
+    // ===== EXPORT CHAT =====
+    exportChatBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch(EXPORT_URL);
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `onyx_chat_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        alert('Could not export chat.');
+      }
+    });
+
+    // ===== SAVE PERSONALITY =====
+    savePersonalityBtn.addEventListener('click', async () => {
+      const prompt = personalityInput.value.trim();
+      if (!prompt) return alert('Please enter a system prompt.');
+      try {
+        const res = await fetch(SYSTEM_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt }),
+        });
+        if (res.ok) alert('Personality updated!');
+        else alert('Failed to update personality.');
+      } catch (e) {
+        alert('Error saving personality.');
+      }
+    });
+
+    // ===== WELCOME MESSAGE (Markdown) =====
+    const welcome = messagesDiv.querySelector('.message.assistant');
+    if (welcome) {
+      welcome.innerHTML = renderMarkdown('Hello, I\'m **Onyx v3.0**. I have memory, can search the web, think step‑by‑step, read files, and adapt to your personality. How can I help?');
     }
   </script>
 </body>
