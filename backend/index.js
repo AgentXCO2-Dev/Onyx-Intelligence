@@ -8,10 +8,8 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Mistral client reads directly from Render's environment variable
 const client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });
 
-// Streaming chat endpoint
 app.post('/api/chat', async (req, res) => {
   const { message } = req.body;
   
