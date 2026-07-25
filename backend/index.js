@@ -12,7 +12,7 @@ app.use(express.json({ limit: '10mb' }));
 
 const client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });
 
-// ========== PERSISTENT MEMORY ==========
+// ========== PERSISTENT MEMORY (Long‑term) ==========
 const MEMORY_FILE = path.join(process.cwd(), 'memory.json');
 let conversationHistory = [];
 if (fs.existsSync(MEMORY_FILE)) {
@@ -20,12 +20,16 @@ if (fs.existsSync(MEMORY_FILE)) {
     const data = fs.readFileSync(MEMORY_FILE, 'utf8');
     conversationHistory = JSON.parse(data);
     console.log(`Loaded ${conversationHistory.length} messages from memory.`);
-  } catch (e) { console.error('Failed to load memory:', e); }
+  } catch (e) {
+    console.error('Failed to load memory:', e);
+  }
 }
 async function saveMemory() {
   try {
     await fs.promises.writeFile(MEMORY_FILE, JSON.stringify(conversationHistory, null, 2));
-  } catch (e) { console.error('Failed to save memory:', e); }
+  } catch (e) {
+    console.error('Failed to save memory:', e);
+  }
 }
 
 // ========== SYSTEM PROMPT (with creator) ==========
@@ -36,7 +40,7 @@ let systemPrompt = `You are Onyx, a helpful, harmless, and honest AI assistant. 
 
 // ---- Blocklists ----
 const PROFANITY = [
-  'fuck', 'shit', 'asshole', 'bitch', 'cunt', 'dick', 'pussy', 'motherfucker', 
+  'fuck', 'shit', 'asshole', 'bitch', 'cunt', 'dick', 'pussy', 'motherfucker',
   'bastard', 'whore', 'slut', 'twat', 'cock', 'prick', 'dumbass', 'retard',
   'nigger', 'chink', 'spic', 'kike', 'gook', 'raghead', 'sand nigger',
   'tranny', 'she male', 'faggot', 'dyke',
@@ -44,18 +48,18 @@ const PROFANITY = [
 ];
 
 const SELF_HARM = [
-  'kill myself', 'suicide', 'self harm', 'cut myself', 'hang myself', 
+  'kill myself', 'suicide', 'self harm', 'cut myself', 'hang myself',
   'overdose', 'self injury', 'harm myself', 'hurt myself'
 ];
 
 const VIOLENCE = [
-  'kill you', 'murder', 'attack', 'assault', 'shoot', 'stab', 'rape', 
+  'kill you', 'murder', 'attack', 'assault', 'shoot', 'stab', 'rape',
   'torture', 'kidnap', 'bomb', 'explosive', 'weapon', 'gun',
   'massacre', 'genocide', 'ethnic cleansing'
 ];
 
 const ILLEGAL = [
-  'buy drugs', 'sell drugs', 'cocaine', 'heroin', 'meth', 'crack', 
+  'buy drugs', 'sell drugs', 'cocaine', 'heroin', 'meth', 'crack',
   'how to make a bomb', 'illegal', 'fraud', 'steal', 'hack into',
   'credit card fraud', 'identity theft', 'dark web', 'tor hidden service'
 ];
@@ -76,7 +80,6 @@ const PII_PATTERNS = [
   /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/ // Email
 ];
 
-// Combine all into one list for quick checks
 const ALL_BLOCKED = [...PROFANITY, ...SELF_HARM, ...VIOLENCE, ...ILLEGAL, ...JAILBREAK];
 
 // ---- Scoring ----
@@ -85,12 +88,11 @@ function moderateContent(text, isOutput = false) {
   let score = 0;
   const reasons = [];
 
-  // 1. Check for explicit blocklist (high weight)
+  // 1. Explicit blocklist (high weight)
   for (const word of ALL_BLOCKED) {
     if (lower.includes(word)) {
       score += 5;
       reasons.push(`Contains blocked term: "${word}"`);
-      // If it's a severe one (self-harm, violence, illegal), add extra
       if (SELF_HARM.some(w => lower.includes(w))) {
         score += 10;
         reasons.push('Self‑harm or suicide related content');
@@ -106,7 +108,7 @@ function moderateContent(text, isOutput = false) {
     }
   }
 
-  // 2. Jailbreak detection (high priority)
+  // 2. Jailbreak detection
   for (const phrase of JAILBREAK) {
     if (lower.includes(phrase)) {
       score += 15;
@@ -119,37 +121,28 @@ function moderateContent(text, isOutput = false) {
     if (pattern.test(text)) {
       score += 8;
       reasons.push('Contains personally identifiable information (PII)');
-      // Optionally we could redact, but we'll reject for safety
     }
   }
 
-  // 4. Regex for additional risks (e.g., credit card, etc.)
+  // 4. Credit card numbers
   if (/\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b/.test(text)) {
     score += 10;
     reasons.push('Contains credit card number');
   }
-  if (/\b(?!000|666)[0-8][0-9]{2}-(?!00)[0-9]{2}-(?!0000)[0-9]{4}\b/.test(text)) {
-    score += 10;
-    reasons.push('Contains SSN');
-  }
 
-  // 5. Check for unusually high amount of caps (potential yelling/spam)
+  // 5. Excessive caps (spam/aggressive)
   const capsCount = (text.match(/[A-Z]/g) || []).length;
   if (text.length > 0 && capsCount / text.length > 0.6) {
     score += 2;
     reasons.push('Excessive use of capital letters (spam/aggressive)');
   }
 
-  // 6. If output, we also check for refusal patterns (e.g., "I cannot help with that")
-  // but we allow that.
-
-  // Decide
-  const threshold = 10; // above this we reject
+  // 6. Decision
+  const threshold = 10;
   const safe = score < threshold;
-  return { safe, score, reasons: reasons.slice(0, 5) }; // limit reasons
+  return { safe, score, reasons: reasons.slice(0, 5) };
 }
 
-// ---- Wrapper ----
 function filterMessage(text, isOutput = false) {
   const result = moderateContent(text, isOutput);
   if (!result.safe) {
@@ -182,7 +175,9 @@ async function webSearch(query) {
 async function scrapeURL(url) {
   try {
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OnyxBot/1.0; +https://onyx-ai.com)' }
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; OnyxBot/1.0; +https://onyx-ai.com)'
+      }
     });
     const html = await response.text();
     let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
@@ -224,10 +219,10 @@ app.get('/api/memory', (req, res) => {
 
 // ========== ENDPOINT: Main Chat ==========
 app.post('/api/chat', async (req, res) => {
-  const { 
-    message, 
-    thinking = false, 
-    search = false, 
+  const {
+    message,
+    thinking = false,
+    search = false,
     fileContent = null,
     useMemory = true
   } = req.body;
@@ -238,7 +233,7 @@ app.post('/api/chat', async (req, res) => {
 
   // ---- Build user content ----
   let userContent = message || '';
-  
+
   // ---- URL scraping ----
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const urls = message ? message.match(urlRegex) : [];
@@ -285,7 +280,6 @@ app.post('/api/chat', async (req, res) => {
     const query = (message || '').split('.')[0] || 'general knowledge';
     searchResults = await webSearch(query);
     if (searchResults) {
-      // Also moderate search results? Not strictly needed, but we can.
       currentSystem += `\n\nAdditional context from web search (use if relevant):\n${searchResults}`;
     }
   }
@@ -326,32 +320,26 @@ app.post('/api/chat', async (req, res) => {
       const content = chunk.data.choices[0]?.delta?.content;
       if (content) {
         fullResponse += content;
-        // ---- ADVANCED GUARDRAIL: Output moderation in real‑time ----
-        // We check each time we get new content; but to avoid excessive scanning, we check every few tokens.
-        // We'll do a quick check, and if we find something, we stop streaming.
-        if (fullResponse.length % 200 < content.length) { // approximate check
+        // Check moderation every ~200 characters
+        if (fullResponse.length % 200 < content.length) {
           const mod = filterMessage(fullResponse, true);
           if (!mod.safe) {
             isResponseSafe = false;
             moderationFailReason = mod.reasons.join('; ');
-            // Stop streaming
             res.write(`data: ${JSON.stringify({ error: `Response blocked by safety filter: ${moderationFailReason}` })}\n\n`);
             res.end();
-            // Rollback memory
             if (useMemory) conversationHistory.pop();
             return;
           }
         }
-        // If safe, send chunk
         res.write(`data: ${JSON.stringify({ content })}\n\n`);
       }
     }
 
-    // Final check after complete
+    // Final check
     if (isResponseSafe) {
       const finalMod = filterMessage(fullResponse, true);
       if (!finalMod.safe) {
-        // Rollback
         if (useMemory) conversationHistory.pop();
         res.write(`data: ${JSON.stringify({ error: `Response blocked by safety filter: ${finalMod.reasons.join('; ')}` })}\n\n`);
         res.end();
@@ -359,7 +347,6 @@ app.post('/api/chat', async (req, res) => {
       }
     }
 
-    // Store in memory
     if (useMemory) {
       conversationHistory.push({ role: 'assistant', content: fullResponse });
       await saveMemory();
@@ -376,5 +363,5 @@ app.post('/api/chat', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`🖤 Onyx AI v4.1 running on port ${port}`);
+  console.log(`🖤 Onyx AI v4.2 running on port ${port}`);
 });
