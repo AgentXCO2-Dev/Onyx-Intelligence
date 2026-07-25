@@ -11,11 +11,7 @@ app.use(express.json({ limit: '10mb' }));
 const client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });
 
 // ========== STATE ==========
-// System prompt (personality) – can be changed via API
-let systemPrompt = 'You are Onyx, a helpful, harmless, and honest AI assistant. You always respond concisely, clearly, and with a friendly tone. You refuse to generate harmful, illegal, or toxic content. If asked about something you do not know, you admit it.';
-
-// Session memory: stores the entire conversation history for this server instance
-// This acts as both short‑term (current chat) and session memory (persists until server restart)
+let systemPrompt = 'You are Onyx, a helpful, harmless, and honest AI assistant. You always respond concisely, clearly, and with a friendly tone. You refuse to generate harmful, illegal, or toxic content. If asked about something you do not know, you admit it. You were created by AgentXCO2, a AI research scientist.';
 let conversationHistory = [];
 
 // ========== GUARDRAILS ==========
@@ -29,7 +25,7 @@ function isMessageSafe(text) {
   return true;
 }
 
-// ========== WEB SEARCH (DuckDuckGo) ==========
+// ========== WEB SEARCH ==========
 async function webSearch(query) {
   try {
     const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
@@ -49,7 +45,42 @@ async function webSearch(query) {
   }
 }
 
-// ========== ENDPOINT: Set Personality (System Prompt) ==========
+// ========== URL SCRAPER ==========
+async function scrapeURL(url) {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; OnyxBot/1.0; +https://onyx-ai.com)'
+      }
+    });
+    const html = await response.text();
+    
+    // Remove script and style tags
+    let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+    // Remove HTML tags
+    text = text.replace(/<[^>]+>/g, ' ');
+    // Decode HTML entities
+    text = text.replace(/&nbsp;/g, ' ');
+    text = text.replace(/&amp;/g, '&');
+    text = text.replace(/&lt;/g, '<');
+    text = text.replace(/&gt;/g, '>');
+    text = text.replace(/&quot;/g, '"');
+    // Condense whitespace
+    text = text.replace(/\s+/g, ' ').trim();
+    
+    // Limit to 5000 chars to avoid token overload
+    if (text.length > 5000) {
+      text = text.substring(0, 5000) + '\n... (truncated)';
+    }
+    return text || 'No readable content found on this page.';
+  } catch (e) {
+    console.error('Scrape error:', e);
+    return null;
+  }
+}
+
+// ========== ENDPOINT: Set Personality ==========
 app.post('/api/system', (req, res) => {
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt required' });
@@ -57,13 +88,13 @@ app.post('/api/system', (req, res) => {
   res.json({ status: 'System prompt updated' });
 });
 
-// ========== ENDPOINT: Clear Memory (Reset conversation) ==========
+// ========== ENDPOINT: Clear Memory ==========
 app.post('/api/clear', (req, res) => {
   conversationHistory = [];
   res.json({ status: 'Memory cleared' });
 });
 
-// ========== ENDPOINT: Get Current Memory (for debugging/export) ==========
+// ========== ENDPOINT: Get Memory ==========
 app.get('/api/memory', (req, res) => {
   res.json({ history: conversationHistory });
 });
@@ -75,15 +106,31 @@ app.post('/api/chat', async (req, res) => {
     thinking = false, 
     search = false, 
     fileContent = null,
-    useMemory = true   // toggle memory on/off per request
+    useMemory = true
   } = req.body;
 
   if (!message && !fileContent) {
     return res.status(400).json({ error: 'Message or file required' });
   }
 
-  // Build user content
+  // ---- Build user content ----
   let userContent = message || '';
+  
+  // ---- URL SCRAPING: Auto-detect URLs in the message ----
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const urls = message ? message.match(urlRegex) : [];
+  let scrapedText = null;
+  if (urls && urls.length > 0) {
+    // Scrape the first URL found
+    const scraped = await scrapeURL(urls[0]);
+    if (scraped) {
+      scrapedText = scraped;
+      userContent += `\n\n[Scraped webpage content from ${urls[0]}]:\n${scraped}`;
+    } else {
+      userContent += `\n\n[Failed to scrape ${urls[0]}]`;
+    }
+  }
+
   if (fileContent) {
     userContent += `\n\n[File content]:\n${fileContent}`;
   }
@@ -93,7 +140,7 @@ app.post('/api/chat', async (req, res) => {
     return res.status(400).json({ error: 'Your message contains inappropriate content.' });
   }
 
-  // ---- Build system prompt with optional Think and Search ----
+  // ---- Build system prompt with Think/Search ----
   let currentSystem = systemPrompt;
   if (thinking) {
     currentSystem += ' You must think step by step and provide a final answer. Show your reasoning in a clear manner.';
@@ -101,7 +148,7 @@ app.post('/api/chat', async (req, res) => {
 
   let searchResults = null;
   if (search) {
-    const query = message.split('.')[0] || message;
+    const query = (message || '').split('.')[0] || 'general knowledge';
     searchResults = await webSearch(query);
     if (searchResults) {
       currentSystem += `\n\nAdditional context from web search (use if relevant):\n${searchResults}`;
@@ -109,13 +156,9 @@ app.post('/api/chat', async (req, res) => {
   }
 
   // ---- Manage Memory ----
-  // If memory is enabled, store the user message and use history.
-  // If disabled, we only send the current message without history.
   let messagesToSend = [];
   if (useMemory) {
-    // Store user message in history
     conversationHistory.push({ role: 'user', content: userContent });
-    // Build context from history (last 20 messages)
     const maxMessages = 20;
     const context = conversationHistory.slice(-maxMessages);
     messagesToSend = [
@@ -123,7 +166,6 @@ app.post('/api/chat', async (req, res) => {
       ...context
     ];
   } else {
-    // No memory: only system + current user message
     messagesToSend = [
       { role: 'system', content: currentSystem },
       { role: 'user', content: userContent }
@@ -146,11 +188,9 @@ app.post('/api/chat', async (req, res) => {
       const content = chunk.data.choices[0]?.delta?.content;
       if (content) {
         fullResponse += content;
-        // ---- Output Guard ----
         if (!isMessageSafe(fullResponse)) {
           res.write(`data: ${JSON.stringify({ error: 'Response blocked by safety filter.' })}\n\n`);
           res.end();
-          // Rollback memory if we stored the user message
           if (useMemory) conversationHistory.pop();
           return;
         }
@@ -158,7 +198,6 @@ app.post('/api/chat', async (req, res) => {
       }
     }
 
-    // ---- Store assistant response in memory (if enabled) ----
     if (useMemory) {
       conversationHistory.push({ role: 'assistant', content: fullResponse });
     }
@@ -167,7 +206,6 @@ app.post('/api/chat', async (req, res) => {
     res.end();
   } catch (error) {
     console.error('Mistral Error:', error);
-    // Rollback memory if we stored the user message
     if (useMemory) conversationHistory.pop();
     res.write(`data: ${JSON.stringify({ error: 'AI service error. Please try again.' })}\n\n`);
     res.end();
@@ -175,5 +213,5 @@ app.post('/api/chat', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`🖤 Onyx AI v3.0 running on port ${port}`);
+  console.log(`🖤 Onyx AI v3.1 running on port ${port}`);
 });
