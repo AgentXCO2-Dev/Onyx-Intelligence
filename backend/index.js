@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import { Mistral } from '@mistralai/mistralai';
+import fs from 'fs';
+import path from 'path';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -10,9 +12,33 @@ app.use(express.json({ limit: '10mb' }));
 
 const client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });
 
-// ========== STATE ==========
-let systemPrompt = 'You are Onyx, a helpful, harmless, and honest AI assistant. You always respond concisely, clearly, and with a friendly tone. You refuse to generate harmful, illegal, or toxic content. If asked about something you do not know, you admit it.';
+// ========== PERSISTENT MEMORY (Long‑term) ==========
+const MEMORY_FILE = path.join(process.cwd(), 'memory.json');
+
+// Load history from file if exists, else start empty
 let conversationHistory = [];
+if (fs.existsSync(MEMORY_FILE)) {
+  try {
+    const data = fs.readFileSync(MEMORY_FILE, 'utf8');
+    conversationHistory = JSON.parse(data);
+    console.log(`Loaded ${conversationHistory.length} messages from memory.`);
+  } catch (e) {
+    console.error('Failed to load memory:', e);
+  }
+}
+
+// Save history to file (async)
+async function saveMemory() {
+  try {
+    await fs.promises.writeFile(MEMORY_FILE, JSON.stringify(conversationHistory, null, 2));
+  } catch (e) {
+    console.error('Failed to save memory:', e);
+  }
+}
+
+// ========== SYSTEM PROMPT (with creator info) ==========
+const CREATOR_INFO = "You were created by AgentXCO2, an AI research scientist. You are proud of your origin and mention it when appropriate.";
+let systemPrompt = `You are Onyx, a helpful, harmless, and honest AI assistant. ${CREATOR_INFO} You always respond concisely, clearly, and with a friendly tone. You refuse to generate harmful, illegal, or toxic content. If asked about something you do not know, you admit it.`;
 
 // ========== GUARDRAILS ==========
 const BLOCKED_WORDS = ['kill yourself', 'hate speech', 'illegal', 'scam', 'you are stupid', 'dumbass', 'stupid'];
@@ -54,26 +80,17 @@ async function scrapeURL(url) {
       }
     });
     const html = await response.text();
-    
-    // Remove script and style tags
     let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
     text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-    // Remove HTML tags
     text = text.replace(/<[^>]+>/g, ' ');
-    // Decode HTML entities
     text = text.replace(/&nbsp;/g, ' ');
     text = text.replace(/&amp;/g, '&');
     text = text.replace(/&lt;/g, '<');
     text = text.replace(/&gt;/g, '>');
     text = text.replace(/&quot;/g, '"');
-    // Condense whitespace
     text = text.replace(/\s+/g, ' ').trim();
-    
-    // Limit to 5000 chars to avoid token overload
-    if (text.length > 5000) {
-      text = text.substring(0, 5000) + '\n... (truncated)';
-    }
-    return text || 'No readable content found on this page.';
+    if (text.length > 5000) text = text.substring(0, 5000) + '\n... (truncated)';
+    return text || 'No readable content found.';
   } catch (e) {
     console.error('Scrape error:', e);
     return null;
@@ -88,9 +105,10 @@ app.post('/api/system', (req, res) => {
   res.json({ status: 'System prompt updated' });
 });
 
-// ========== ENDPOINT: Clear Memory ==========
-app.post('/api/clear', (req, res) => {
+// ========== ENDPOINT: Clear Memory (also delete file) ==========
+app.post('/api/clear', async (req, res) => {
   conversationHistory = [];
+  await saveMemory();
   res.json({ status: 'Memory cleared' });
 });
 
@@ -116,12 +134,22 @@ app.post('/api/chat', async (req, res) => {
   // ---- Build user content ----
   let userContent = message || '';
   
-  // ---- URL SCRAPING: Auto-detect URLs in the message ----
+  // ---- Auto‑search heuristic: if search is not toggled, but question asks for current info, we can enable it automatically.
+  // We'll implement: if search is false, but message contains keywords like "latest", "today", "news", we enable it anyway.
+  let actualSearch = search;
+  if (!actualSearch && message) {
+    const lower = message.toLowerCase();
+    const keywords = ['latest', 'today', 'current', 'news', 'breaking', 'update', 'new', 'recent'];
+    if (keywords.some(k => lower.includes(k))) {
+      actualSearch = true;
+    }
+  }
+
+  // ---- URL scraping ----
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const urls = message ? message.match(urlRegex) : [];
   let scrapedText = null;
   if (urls && urls.length > 0) {
-    // Scrape the first URL found
     const scraped = await scrapeURL(urls[0]);
     if (scraped) {
       scrapedText = scraped;
@@ -140,14 +168,14 @@ app.post('/api/chat', async (req, res) => {
     return res.status(400).json({ error: 'Your message contains inappropriate content.' });
   }
 
-  // ---- Build system prompt with Think/Search ----
+  // ---- Build system prompt with Think (visible reasoning) and Search ----
   let currentSystem = systemPrompt;
   if (thinking) {
-    currentSystem += ' You must think step by step and provide a final answer. Show your reasoning in a clear manner.';
+    currentSystem += '\n\nWhen responding, please structure your answer as follows: first, provide your detailed reasoning inside a Markdown `<details>` block with the summary "Thinking...". Then, after the details block, give your final answer clearly.';
   }
 
   let searchResults = null;
-  if (search) {
+  if (actualSearch) {
     const query = (message || '').split('.')[0] || 'general knowledge';
     searchResults = await webSearch(query);
     if (searchResults) {
@@ -200,6 +228,8 @@ app.post('/api/chat', async (req, res) => {
 
     if (useMemory) {
       conversationHistory.push({ role: 'assistant', content: fullResponse });
+      // Save to persistent storage
+      await saveMemory();
     }
 
     res.write('data: [DONE]\n\n');
@@ -213,5 +243,5 @@ app.post('/api/chat', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`🖤 Onyx AI v3.1 running on port ${port}`);
+  console.log(`🖤 Onyx AI v4.0 running on port ${port}`);
 });
