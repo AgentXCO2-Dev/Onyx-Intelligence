@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Onyx AI v3.1</title>
+  <title>Onyx AI v4.0</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -43,6 +43,8 @@
     body.light #sendBtn:hover { background: #2c974b; }
     body.light .code-actions button { background: #d0d7de; color: #1f2328; }
     body.light .code-actions button:hover { background: #b0b8c0; }
+    body.light .message-actions button { color: #57606a; }
+    body.light .message-actions button:hover { background: #e1e4e8; }
 
     /* ----- SIDEBAR ----- */
     .sidebar {
@@ -185,6 +187,11 @@
       padding-top: 12px;
       text-align: center;
     }
+    .creator-credit {
+      font-size: 11px;
+      color: #58a6ff;
+      margin-top: 4px;
+    }
 
     /* ----- MAIN CHAT ----- */
     .main-chat {
@@ -229,33 +236,45 @@
     #messages::-webkit-scrollbar { width: 6px; }
     #messages::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
 
-    .message {
+    .message-wrapper {
+      display: flex;
+      flex-direction: column;
       max-width: 85%;
+      animation: fadeUp 0.3s ease;
+    }
+    .message-wrapper.user { align-self: flex-end; }
+    .message-wrapper.assistant { align-self: flex-start; }
+
+    .message {
       padding: 14px 20px;
       border-radius: 16px;
       line-height: 1.6;
       word-wrap: break-word;
-      animation: fadeUp 0.3s ease;
       font-size: 15px;
     }
     .message.user {
       background: #1f2937;
-      align-self: flex-end;
       border-bottom-right-radius: 4px;
       color: #f0f6fc;
     }
-    /* ----- Markdown styles for USER messages ----- */
-    .message.user h1, .message.user h2, .message.user h3 { margin: 8px 0 4px 0; color: #f0f6fc; }
-    .message.user p { margin: 4px 0; }
-    .message.user ul, .message.user ol { padding-left: 24px; margin: 4px 0; }
-    .message.user code:not(pre code) {
-      background: #2d3748;
+    .message.assistant {
+      background: #161b22;
+      border-bottom-left-radius: 4px;
+      border: 1px solid #30363d;
+      color: #e6edf3;
+    }
+    /* Markdown styles for both */
+    .message h1, .message h2, .message h3 { margin: 8px 0 4px 0; }
+    .message p { margin: 4px 0; }
+    .message ul, .message ol { padding-left: 24px; margin: 4px 0; }
+    .message code:not(pre code) {
+      background: #1a1f2a;
       padding: 2px 6px;
       border-radius: 4px;
       font-size: 14px;
       color: #f0883e;
     }
-    .message.user pre {
+    .message pre {
       background: #0d1117;
       border: 1px solid #30363d;
       border-radius: 8px;
@@ -264,62 +283,47 @@
       position: relative;
       overflow-x: auto;
     }
-    .message.user pre code {
+    .message pre code {
       font-size: 14px;
       font-family: 'JetBrains Mono', 'Fira Code', monospace;
-      color: #e6edf3;
+    }
+    .message details {
+      margin: 8px 0;
+      padding: 8px 12px;
+      background: #1a1f2a;
+      border-radius: 8px;
+      border-left: 3px solid #58a6ff;
+    }
+    .message details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: #58a6ff;
     }
 
-    /* ----- Assistant message styles (existing) ----- */
-    .message.assistant {
-      background: #161b22;
-      align-self: flex-start;
-      border-bottom-left-radius: 4px;
-      border: 1px solid #30363d;
-      color: #e6edf3;
-    }
-    .message.assistant h1, .message.assistant h2, .message.assistant h3 { margin: 12px 0 6px 0; }
-    .message.assistant p { margin: 6px 0; }
-    .message.assistant ul, .message.assistant ol { padding-left: 24px; margin: 6px 0; }
-    .message.assistant code:not(pre code) {
-      background: #1a1f2a;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 14px;
-      color: #f0883e;
-    }
-    .message.assistant pre {
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 12px;
-      margin: 10px 0;
-      position: relative;
-      overflow-x: auto;
-    }
-    .message.assistant pre code {
-      font-size: 14px;
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
-    }
-    .code-actions {
-      position: absolute;
-      top: 8px;
-      right: 8px;
+    /* Message actions */
+    .message-actions {
       display: flex;
       gap: 6px;
+      margin-top: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      justify-content: flex-end;
     }
-    .code-actions button {
-      background: #21262d;
-      color: #c9d1d9;
+    .message-wrapper:hover .message-actions { opacity: 1; }
+    .message-actions button {
+      background: none;
       border: none;
-      border-radius: 6px;
-      padding: 4px 10px;
-      font-size: 12px;
+      color: #8b949e;
       cursor: pointer;
-      opacity: 0.6;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
       transition: 0.2s;
     }
-    .code-actions button:hover { opacity: 1; background: #30363d; }
+    .message-actions button:hover {
+      background: #30363d;
+      color: #f0f6fc;
+    }
 
     /* ----- INPUT AREA ----- */
     .input-area {
@@ -458,7 +462,7 @@
       .chat-header { padding: 12px 16px; }
       #messages { padding: 16px; }
       .input-area { padding: 12px 16px 20px; }
-      .message { max-width: 92%; }
+      .message-wrapper { max-width: 92%; }
     }
   </style>
 </head>
@@ -487,7 +491,10 @@
       <button id="clearMemoryBtn">🗑️ Clear Memory</button>
     </div>
 
-    <div class="sidebar-footer">Onyx v3.1 · URL Scraper + Markdown</div>
+    <div class="sidebar-footer">
+      <div>Onyx v4.0 · Long‑term memory</div>
+      <div class="creator-credit">⚡ Created by AgentXCO2</div>
+    </div>
   </div>
 
   <!-- MAIN CHAT -->
@@ -500,21 +507,17 @@
       <span class="status-badge">● Online</span>
     </div>
 
-    <div id="messages">
-      <div class="message assistant"># Welcome to Onyx v3.1 🌐
-
-Paste any URL and I'll scrape it. Type with **Markdown**, use `# headings`, and stack your messages beautifully!</div>
-    </div>
+    <div id="messages"></div>
 
     <div class="input-area">
       <div class="input-row">
         <div class="input-wrapper">
-          <textarea id="userInput" rows="1" placeholder="Paste a URL or ask anything..."></textarea>
+          <textarea id="userInput" rows="1" placeholder="Ask me anything..."></textarea>
           <button id="sendBtn">Send</button>
         </div>
       </div>
       <div class="input-controls">
-        <label><input type="checkbox" id="thinkToggle" /> 🤔 Think</label>
+        <label><input type="checkbox" id="thinkToggle" /> 🧠 Think</label>
         <label><input type="checkbox" id="searchToggle" /> 🌐 Search</label>
         <div class="file-upload-wrapper">
           <button>📎 Upload File</button>
@@ -551,6 +554,328 @@ Paste any URL and I'll scrape it. Type with **Markdown**, use `# headings`, and 
     const fileName = document.getElementById('fileName');
 
     let fileContent = null;
+    let messages = []; // local array of {role, content, id?}
+    let editingIndex = null; // index of message being edited
+    let regenerating = false;
+
+    // ===== LOCAL STORAGE =====
+    const STORAGE_KEY = 'onyx_messages';
+
+    function loadMessagesFromStorage() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          messages = JSON.parse(stored);
+        } catch (e) { messages = []; }
+      } else {
+        // Welcome message
+        messages = [{ role: 'assistant', content: 'Hello, I\'m **Onyx v4.0**. I have long‑term memory, visible thinking, and I know my creator is **AgentXCO2**. How can I help?' }];
+      }
+      return messages;
+    }
+
+    function saveMessagesToStorage() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    }
+
+    // ===== RENDER MESSAGES =====
+    function renderMessages() {
+      messagesDiv.innerHTML = '';
+      messages.forEach((msg, index) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = `message-wrapper ${msg.role}`;
+        wrapper.dataset.index = index;
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${msg.role}`;
+        messageDiv.innerHTML = renderMarkdown(msg.content);
+        wrapper.appendChild(messageDiv);
+
+        // Actions
+        const actions = document.createElement('div');
+        actions.className = 'message-actions';
+        if (msg.role === 'user') {
+          // Edit button
+          const editBtn = document.createElement('button');
+          editBtn.textContent = '✏️';
+          editBtn.title = 'Edit message';
+          editBtn.onclick = (e) => {
+            e.stopPropagation();
+            startEditing(index);
+          };
+          actions.appendChild(editBtn);
+        } else if (msg.role === 'assistant') {
+          // Regenerate button
+          const regenBtn = document.createElement('button');
+          regenBtn.textContent = '🔄';
+          regenBtn.title = 'Regenerate response';
+          regenBtn.onclick = (e) => {
+            e.stopPropagation();
+            regenerate(index);
+          };
+          actions.appendChild(regenBtn);
+        }
+        // Delete button for all
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '🗑️';
+        deleteBtn.title = 'Delete this and all later messages';
+        deleteBtn.onclick = (e) => {
+          e.stopPropagation();
+          deleteFrom(index);
+        };
+        actions.appendChild(deleteBtn);
+
+        wrapper.appendChild(actions);
+        messagesDiv.appendChild(wrapper);
+      });
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // ===== RENDER MARKDOWN =====
+    function renderMarkdown(text) {
+      const rawHtml = marked.parse(text);
+      const temp = document.createElement('div');
+      temp.innerHTML = rawHtml;
+      temp.querySelectorAll('pre code').forEach((block) => {
+        const pre = block.parentElement;
+        const actions = document.createElement('div');
+        actions.className = 'code-actions';
+        const copyBtn = document.createElement('button');
+        copyBtn.textContent = 'Copy';
+        copyBtn.onclick = () => {
+          navigator.clipboard.writeText(block.textContent);
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+        };
+        const downloadBtn = document.createElement('button');
+        downloadBtn.textContent = 'Download';
+        downloadBtn.onclick = () => {
+          const blob = new Blob([block.textContent], { type: 'text/plain' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'code.txt';
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+        actions.appendChild(copyBtn);
+        actions.appendChild(downloadBtn);
+        pre.style.position = 'relative';
+        pre.prepend(actions);
+        hljs.highlightElement(block);
+      });
+      return temp.innerHTML;
+    }
+
+    // ===== ADD MESSAGE =====
+    function addMessage(role, content) {
+      messages.push({ role, content });
+      saveMessagesToStorage();
+      renderMessages();
+    }
+
+    // ===== DELETE FROM INDEX =====
+    function deleteFrom(index) {
+      if (!confirm('Delete this and all later messages?')) return;
+      messages = messages.slice(0, index);
+      saveMessagesToStorage();
+      renderMessages();
+    }
+
+    // ===== EDIT MESSAGE =====
+    function startEditing(index) {
+      const msg = messages[index];
+      if (msg.role !== 'user') return;
+      input.value = msg.content;
+      input.focus();
+      // Remove the message and all after it
+      messages = messages.slice(0, index);
+      saveMessagesToStorage();
+      renderMessages();
+      // We'll send on next send
+    }
+
+    // ===== REGENERATE =====
+    async function regenerate(index) {
+      if (regenerating) return;
+      const msg = messages[index];
+      if (msg.role !== 'assistant') return;
+      // Find the last user message before this assistant message
+      let userIndex = index - 1;
+      while (userIndex >= 0 && messages[userIndex].role !== 'user') userIndex--;
+      if (userIndex < 0) return;
+      const userMsg = messages[userIndex];
+      // Remove from this assistant onward
+      messages = messages.slice(0, index);
+      saveMessagesToStorage();
+      renderMessages();
+      // Resend the user message
+      regenerating = true;
+      await sendMessageWithText(userMsg.content);
+      regenerating = false;
+    }
+
+    // ===== SEND MESSAGE (main) =====
+    async function sendMessage() {
+      const text = input.value.trim();
+      if (!text && !fileContent) return;
+      await sendMessageWithText(text);
+    }
+
+    async function sendMessageWithText(text) {
+      const userMessage = text || '📎 Uploaded file';
+      if (fileContent) {
+        // We'll include file in backend, but for display we add file info
+        const displayMsg = userMessage + (fileContent ? `\n\n📎 **File:** ${fileName.textContent}` : '');
+        addMessage('user', displayMsg);
+      } else {
+        addMessage('user', userMessage);
+      }
+
+      // Prepare payload
+      const payload = {
+        message: text,
+        thinking: thinkToggle.checked,
+        search: searchToggle.checked,
+        fileContent: fileContent || null,
+        useMemory: memoryToggle.checked
+      };
+
+      // Clear file
+      fileInput.value = '';
+      fileName.textContent = '';
+      fileContent = null;
+
+      input.value = '';
+      input.style.height = 'auto';
+      sendBtn.disabled = true;
+      input.disabled = true;
+
+      // Add placeholder assistant message
+      messages.push({ role: 'assistant', content: '' });
+      saveMessagesToStorage();
+      renderMessages();
+      const assistantIndex = messages.length - 1;
+
+      // Typing indicator
+      const typingDiv = document.createElement('div');
+      typingDiv.className = 'typing-indicator';
+      typingDiv.textContent = 'Onyx is thinking...';
+      messagesDiv.appendChild(typingDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      try {
+        const response = await fetch(BACKEND_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        typingDiv.remove();
+
+        if (!response.ok) {
+          const err = await response.json();
+          messages[assistantIndex].content = `⚠️ ${err.error || 'Something went wrong.'}`;
+          saveMessagesToStorage();
+          renderMessages();
+          sendBtn.disabled = false;
+          input.disabled = false;
+          input.focus();
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullContent = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const payload = line.slice(6);
+              if (payload === '[DONE]') continue;
+              try {
+                const json = JSON.parse(payload);
+                if (json.content) {
+                  fullContent += json.content;
+                  messages[assistantIndex].content = fullContent;
+                  saveMessagesToStorage();
+                  renderMessages();
+                }
+                if (json.error) {
+                  messages[assistantIndex].content = `⚠️ ${json.error}`;
+                  saveMessagesToStorage();
+                  renderMessages();
+                }
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (error) {
+        typingDiv.remove();
+        messages[assistantIndex].content = '❌ Failed to connect to backend. Ensure Render is awake.';
+        saveMessagesToStorage();
+        renderMessages();
+        console.error(error);
+      }
+
+      sendBtn.disabled = false;
+      input.disabled = false;
+      input.focus();
+    }
+
+    // ===== NEW CHAT =====
+    function newChat() {
+      if (messages.length > 1 && !confirm('Start a new chat? (All local and server memory will be cleared)')) return;
+      // Clear backend
+      fetch(CLEAR_URL, { method: 'POST' }).catch(() => {});
+      // Clear local
+      messages = [{ role: 'assistant', content: 'New chat started. Ask me anything!' }];
+      saveMessagesToStorage();
+      renderMessages();
+      sidebar.classList.remove('open');
+    }
+    newChatBtn.addEventListener('click', newChat);
+    clearMemoryBtn.addEventListener('click', newChat);
+
+    // ===== EXPORT =====
+    exportChatBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch(EXPORT_URL);
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `onyx_chat_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        alert('Could not export chat.');
+      }
+    });
+
+    // ===== SAVE PERSONALITY =====
+    savePersonalityBtn.addEventListener('click', async () => {
+      const prompt = personalityInput.value.trim();
+      if (!prompt) return alert('Please enter a system prompt.');
+      try {
+        const res = await fetch(SYSTEM_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt }),
+        });
+        if (res.ok) alert('Personality updated!');
+        else alert('Failed to update personality.');
+      } catch (e) {
+        alert('Error saving personality.');
+      }
+    });
 
     // ===== THEME =====
     let darkMode = true;
@@ -595,197 +920,9 @@ Paste any URL and I'll scrape it. Type with **Markdown**, use `# headings`, and 
       reader.readAsText(file);
     });
 
-    // ===== RENDER MARKDOWN =====
-    function renderMarkdown(text) {
-      const rawHtml = marked.parse(text);
-      const temp = document.createElement('div');
-      temp.innerHTML = rawHtml;
-      temp.querySelectorAll('pre code').forEach((block) => {
-        const pre = block.parentElement;
-        const actions = document.createElement('div');
-        actions.className = 'code-actions';
-        const copyBtn = document.createElement('button');
-        copyBtn.textContent = 'Copy';
-        copyBtn.onclick = () => {
-          navigator.clipboard.writeText(block.textContent);
-          copyBtn.textContent = 'Copied!';
-          setTimeout(() => copyBtn.textContent = 'Copy', 2000);
-        };
-        const downloadBtn = document.createElement('button');
-        downloadBtn.textContent = 'Download';
-        downloadBtn.onclick = () => {
-          const blob = new Blob([block.textContent], { type: 'text/plain' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'code.txt';
-          a.click();
-          URL.revokeObjectURL(url);
-        };
-        actions.appendChild(copyBtn);
-        actions.appendChild(downloadBtn);
-        pre.style.position = 'relative';
-        pre.prepend(actions);
-        hljs.highlightElement(block);
-      });
-      return temp.innerHTML;
-    }
-
-    // ===== ADD MESSAGE (NOW WITH MARKDOWN FOR BOTH) =====
-    function addMessage(role, content) {
-      const div = document.createElement('div');
-      div.className = `message ${role}`;
-      if (role === 'assistant' || role === 'user') {
-        div.innerHTML = renderMarkdown(content);
-      } else {
-        div.textContent = content;
-      }
-      messagesDiv.appendChild(div);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-      return div;
-    }
-
-    // ===== SEND MESSAGE =====
-    async function sendMessage() {
-      const text = input.value.trim();
-      if (!text && !fileContent) return;
-
-      sendBtn.disabled = true;
-      input.disabled = true;
-
-      // Show user message with Markdown
-      let displayMsg = text || '📎 Uploaded file';
-      if (fileContent) displayMsg += `\n\n📎 **File:** ${fileName.textContent || 'uploaded file'}`;
-      addMessage('user', displayMsg);
-
-      const payload = {
-        message: text,
-        thinking: thinkToggle.checked,
-        search: searchToggle.checked,
-        fileContent: fileContent || null,
-        useMemory: memoryToggle.checked
-      };
-
-      fileInput.value = '';
-      fileName.textContent = '';
-      fileContent = null;
-      input.value = '';
-      input.style.height = 'auto';
-
-      const typingDiv = document.createElement('div');
-      typingDiv.className = 'typing-indicator';
-      typingDiv.textContent = 'Onyx is thinking...';
-      messagesDiv.appendChild(typingDiv);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-      const assistantMsg = addMessage('assistant', '');
-      typingDiv.remove();
-
-      try {
-        const response = await fetch(BACKEND_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          const err = await response.json();
-          assistantMsg.innerHTML = `⚠️ ${err.error || 'Something went wrong.'}`;
-          sendBtn.disabled = false;
-          input.disabled = false;
-          input.focus();
-          return;
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let fullContent = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop();
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const payload = line.slice(6);
-              if (payload === '[DONE]') continue;
-              try {
-                const json = JSON.parse(payload);
-                if (json.content) {
-                  fullContent += json.content;
-                  assistantMsg.innerHTML = renderMarkdown(fullContent);
-                  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-                }
-                if (json.error) {
-                  assistantMsg.innerHTML = `⚠️ ${json.error}`;
-                }
-              } catch (e) {}
-            }
-          }
-        }
-      } catch (error) {
-        assistantMsg.innerHTML = '❌ Failed to connect to backend. Ensure Render is awake.';
-        console.error(error);
-      }
-
-      sendBtn.disabled = false;
-      input.disabled = false;
-      input.focus();
-    }
-
-    // ===== NEW CHAT =====
-    function newChat() {
-      if (messagesDiv.children.length > 1 && !confirm('Start a new chat? (Memory will be cleared)')) return;
-      fetch(CLEAR_URL, { method: 'POST' }).catch(() => {});
-      messagesDiv.innerHTML = '';
-      addMessage('assistant', 'Memory cleared. Paste a URL or ask me anything!');
-      sidebar.classList.remove('open');
-    }
-    newChatBtn.addEventListener('click', newChat);
-    clearMemoryBtn.addEventListener('click', newChat);
-
-    // ===== EXPORT CHAT =====
-    exportChatBtn.addEventListener('click', async () => {
-      try {
-        const res = await fetch(EXPORT_URL);
-        const data = await res.json();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `onyx_chat_${new Date().toISOString().slice(0,10)}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } catch (e) {
-        alert('Could not export chat.');
-      }
-    });
-
-    // ===== SAVE PERSONALITY =====
-    savePersonalityBtn.addEventListener('click', async () => {
-      const prompt = personalityInput.value.trim();
-      if (!prompt) return alert('Please enter a system prompt.');
-      try {
-        const res = await fetch(SYSTEM_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt }),
-        });
-        if (res.ok) alert('Personality updated!');
-        else alert('Failed to update personality.');
-      } catch (e) {
-        alert('Error saving personality.');
-      }
-    });
-
-    // ===== WELCOME MESSAGE =====
-    const welcome = messagesDiv.querySelector('.message.assistant');
-    if (welcome) {
-      welcome.innerHTML = renderMarkdown('# Welcome to Onyx v3.1 🌐\n\nPaste any URL and I\'ll scrape it. Type with **Markdown**, use `# headings`, and stack your messages beautifully!');
-    }
+    // ===== INIT =====
+    loadMessagesFromStorage();
+    renderMessages();
   </script>
 </body>
 </html>
