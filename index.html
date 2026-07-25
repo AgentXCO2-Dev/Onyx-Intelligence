@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Onyx AI v4.1</title>
-  <!-- Markdown & Highlight.js -->
+  <title>Onyx AI v4.2</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <style>
-    /* ----- RESET & BASE ----- */
+    /* ----- RESET & BASE (Dark theme by default) ----- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -24,7 +23,8 @@
       background: #f6f8fa;
       color: #1f2328;
     }
-    /* ----- SIDEBAR (Dark) ----- */
+
+    /* ----- SIDEBAR (Threads + Controls) ----- */
     .sidebar {
       width: 280px;
       background: #161b22;
@@ -34,7 +34,7 @@
       padding: 20px 16px;
       flex-shrink: 0;
       transition: transform 0.3s ease;
-      overflow-y: auto;
+      overflow: hidden;
     }
     body.light .sidebar {
       background: #ffffff;
@@ -44,7 +44,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
+      flex-shrink: 0;
     }
     .sidebar-header h2 {
       font-size: 20px;
@@ -67,7 +68,7 @@
     body.light .theme-toggle { color: #1f2328; }
     body.light .theme-toggle:hover { background: #e1e4e8; }
 
-    .new-chat-btn {
+    .new-thread-btn {
       background: #238636;
       color: white;
       border: none;
@@ -78,106 +79,83 @@
       cursor: pointer;
       transition: 0.2s;
       width: 100%;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
+      flex-shrink: 0;
     }
-    .new-chat-btn:hover { background: #2ea043; transform: scale(1.02); }
+    .new-thread-btn:hover { background: #2ea043; transform: scale(1.02); }
 
-    .personality-section {
-      margin-bottom: 20px;
+    /* Threads list */
+    .threads-container {
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 16px;
+      padding-right: 4px;
     }
-    .personality-section label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: #8b949e;
-      margin-bottom: 6px;
-    }
-    .personality-section textarea {
-      width: 100%;
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      padding: 8px 10px;
-      color: #e6edf3;
-      font-size: 13px;
-      resize: vertical;
-      min-height: 80px;
-      font-family: inherit;
-      transition: 0.2s;
-    }
-    .personality-section textarea:focus {
-      border-color: #58a6ff;
-      outline: none;
-    }
-    .personality-section button {
-      margin-top: 6px;
-      background: #21262d;
-      border: none;
-      color: #c9d1d9;
-      padding: 4px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .personality-section button:hover { background: #30363d; }
-    body.light .personality-section textarea {
-      background: #f6f8fa;
-      border-color: #d0d7de;
-      color: #1f2328;
-    }
-    body.light .personality-section button {
-      background: #e1e4e8;
-      color: #24292f;
-    }
-    body.light .personality-section button:hover { background: #d0d7de; }
+    .threads-container::-webkit-scrollbar { width: 4px; }
+    .threads-container::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
 
-    .memory-toggle {
+    .thread-item {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
-      font-size: 14px;
-    }
-    .memory-toggle input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: #238636;
-      cursor: pointer;
-    }
-    .memory-toggle label { cursor: pointer; }
-
-    .sidebar-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-    }
-    .sidebar-actions button {
-      flex: 1;
-      background: #21262d;
-      border: none;
-      color: #c9d1d9;
-      padding: 6px 0;
+      justify-content: space-between;
+      padding: 8px 10px;
       border-radius: 6px;
-      font-size: 12px;
       cursor: pointer;
       transition: 0.2s;
-      min-width: 60px;
+      margin-bottom: 2px;
+      font-size: 14px;
+      color: #c9d1d9;
+      position: relative;
     }
-    .sidebar-actions button:hover { background: #30363d; }
-    body.light .sidebar-actions button {
-      background: #e1e4e8;
-      color: #24292f;
+    .thread-item:hover { background: #21262d; }
+    .thread-item.active { background: #1f2937; border-left: 3px solid #58a6ff; }
+    body.light .thread-item { color: #24292f; }
+    body.light .thread-item:hover { background: #e1e4e8; }
+    body.light .thread-item.active { background: #d0d7de; border-left-color: #0969da; }
+
+    .thread-title {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-right: 8px;
     }
-    body.light .sidebar-actions button:hover { background: #d0d7de; }
+    .thread-delete {
+      background: none;
+      border: none;
+      color: #8b949e;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: 0.2s;
+      opacity: 0.4;
+    }
+    .thread-item:hover .thread-delete { opacity: 1; }
+    .thread-delete:hover { background: #30363d; color: #f0f6fc; }
+    body.light .thread-delete { color: #57606a; }
+    body.light .thread-delete:hover { background: #d0d7de; color: #1f2328; }
+
+    .thread-rename {
+      background: none;
+      border: none;
+      color: #8b949e;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: 0.2s;
+      opacity: 0.4;
+    }
+    .thread-item:hover .thread-rename { opacity: 1; }
+    .thread-rename:hover { background: #30363d; color: #f0f6fc; }
 
     .sidebar-footer {
-      margin-top: auto;
+      flex-shrink: 0;
       font-size: 12px;
       color: #484f58;
       border-top: 1px solid #30363d;
@@ -312,10 +290,7 @@
     .message pre code {
       font-size: 14px;
       font-family: 'JetBrains Mono', 'Fira Code', monospace;
-      color: #e6edf3;
     }
-    body.light .message pre code { color: #1f2328; }
-
     .message details {
       margin: 8px 0;
       padding: 8px 12px;
@@ -330,7 +305,6 @@
       color: #58a6ff;
     }
 
-    /* Code actions */
     .code-actions {
       position: absolute;
       top: 8px;
@@ -356,7 +330,7 @@
     }
     body.light .code-actions button:hover { background: #b0b8c0; }
 
-    /* Message actions */
+    /* Message actions (edit, regenerate, delete) */
     .message-actions {
       display: flex;
       gap: 6px;
@@ -549,32 +523,20 @@
   </style>
 </head>
 <body>
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR (Threads + Controls) -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <h2>⚫ ONYX</h2>
       <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
     </div>
-    <button class="new-chat-btn" id="newChatBtn">✨ New Chat</button>
+    <button class="new-thread-btn" id="newThreadBtn">➕ New Chat</button>
 
-    <div class="personality-section">
-      <label for="personalityInput">🧠 Personality (System Prompt)</label>
-      <textarea id="personalityInput" placeholder="Enter custom system prompt..."></textarea>
-      <button id="savePersonalityBtn">Save Personality</button>
-    </div>
-
-    <div class="memory-toggle">
-      <input type="checkbox" id="memoryToggle" checked />
-      <label for="memoryToggle">🧠 Memory (Session)</label>
-    </div>
-
-    <div class="sidebar-actions">
-      <button id="exportChatBtn">📥 Export Chat</button>
-      <button id="clearMemoryBtn">🗑️ Clear Memory</button>
+    <div class="threads-container" id="threadsContainer">
+      <!-- Threads will be rendered here -->
     </div>
 
     <div class="sidebar-footer">
-      <div>Onyx v4.1 · Advanced Guardrails</div>
+      <div>Onyx v4.2 · Multi‑thread</div>
       <div class="creator-credit">⚡ Created by AgentXCO2</div>
     </div>
   </div>
@@ -621,79 +583,187 @@
     const messagesDiv = document.getElementById('messages');
     const input = document.getElementById('userInput');
     const sendBtn = document.getElementById('sendBtn');
-    const newChatBtn = document.getElementById('newChatBtn');
-    const clearMemoryBtn = document.getElementById('clearMemoryBtn');
-    const exportChatBtn = document.getElementById('exportChatBtn');
+    const newThreadBtn = document.getElementById('newThreadBtn');
+    const threadsContainer = document.getElementById('threadsContainer');
     const hamburgerBtn = document.getElementById('hamburgerBtn');
     const sidebar = document.getElementById('sidebar');
     const themeToggle = document.getElementById('themeToggle');
-    const personalityInput = document.getElementById('personalityInput');
-    const savePersonalityBtn = document.getElementById('savePersonalityBtn');
-    const memoryToggle = document.getElementById('memoryToggle');
     const thinkToggle = document.getElementById('thinkToggle');
     const searchToggle = document.getElementById('searchToggle');
     const fileInput = document.getElementById('fileInput');
     const fileName = document.getElementById('fileName');
 
     let fileContent = null;
-    let messages = [];
-    let regenerating = false;
+    let currentThreadId = null;
 
-    // ===== LOCAL STORAGE =====
-    const STORAGE_KEY = 'onyx_messages';
+    // ===== THREADS DATA =====
+    const THREADS_KEY = 'onyx_threads';
+    const CURRENT_THREAD_KEY = 'onyx_current_thread';
 
-    function loadMessagesFromStorage() {
-      const stored = localStorage.getItem(STORAGE_KEY);
+    function getThreads() {
+      const stored = localStorage.getItem(THREADS_KEY);
       if (stored) {
-        try { messages = JSON.parse(stored); } catch (e) { messages = []; }
-      } else {
-        messages = [{ role: 'assistant', content: 'Hello, I\'m **Onyx v4.1** with advanced guardrails. I know my creator is **AgentXCO2**. How can I help?' }];
+        try { return JSON.parse(stored); } catch (e) { return {}; }
       }
-      return messages;
+      // Default: create one thread with a welcome message
+      const defaultId = Date.now().toString();
+      const threads = {};
+      threads[defaultId] = {
+        id: defaultId,
+        title: 'New Chat',
+        messages: [{ role: 'assistant', content: 'Hello, I\'m **Onyx v4.2** with multi‑thread support. I know my creator is **AgentXCO2**. How can I help?' }],
+        createdAt: defaultId,
+        updatedAt: defaultId
+      };
+      localStorage.setItem(THREADS_KEY, JSON.stringify(threads));
+      return threads;
     }
 
-    function saveMessagesToStorage() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    function saveThreads(threads) {
+      localStorage.setItem(THREADS_KEY, JSON.stringify(threads));
     }
 
-    // ===== RENDER MARKDOWN =====
-    function renderMarkdown(text) {
-      const rawHtml = marked.parse(text);
-      const temp = document.createElement('div');
-      temp.innerHTML = rawHtml;
-      temp.querySelectorAll('pre code').forEach((block) => {
-        const pre = block.parentElement;
-        const actions = document.createElement('div');
-        actions.className = 'code-actions';
-        const copyBtn = document.createElement('button');
-        copyBtn.textContent = 'Copy';
-        copyBtn.onclick = () => {
-          navigator.clipboard.writeText(block.textContent);
-          copyBtn.textContent = 'Copied!';
-          setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+    function getCurrentThreadId() {
+      const id = localStorage.getItem(CURRENT_THREAD_KEY);
+      const threads = getThreads();
+      if (id && threads[id]) return id;
+      // otherwise return the first thread
+      const keys = Object.keys(threads);
+      if (keys.length === 0) {
+        // create a new one
+        const newId = Date.now().toString();
+        threads[newId] = { id: newId, title: 'New Chat', messages: [{ role: 'assistant', content: 'New thread. Ask me anything!' }], createdAt: newId, updatedAt: newId };
+        saveThreads(threads);
+        return newId;
+      }
+      return keys[0];
+    }
+
+    function setCurrentThreadId(id) {
+      localStorage.setItem(CURRENT_THREAD_KEY, id);
+      currentThreadId = id;
+    }
+
+    function getThreadMessages(threadId) {
+      const threads = getThreads();
+      return threads[threadId]?.messages || [];
+    }
+
+    function updateThreadMessages(threadId, messages) {
+      const threads = getThreads();
+      if (!threads[threadId]) return;
+      threads[threadId].messages = messages;
+      threads[threadId].updatedAt = Date.now().toString();
+      // auto-generate title from first user message if title is "New Chat" and there is at least one user message
+      const firstUser = messages.find(m => m.role === 'user');
+      if (firstUser && threads[threadId].title === 'New Chat') {
+        const preview = firstUser.content.slice(0, 30) + (firstUser.content.length > 30 ? '…' : '');
+        threads[threadId].title = preview || 'New Chat';
+      }
+      saveThreads(threads);
+    }
+
+    function createNewThread() {
+      const threads = getThreads();
+      const id = Date.now().toString();
+      threads[id] = {
+        id: id,
+        title: 'New Chat',
+        messages: [{ role: 'assistant', content: 'New thread. Ask me anything!' }],
+        createdAt: id,
+        updatedAt: id
+      };
+      saveThreads(threads);
+      setCurrentThreadId(id);
+      renderThreads();
+      renderMessages();
+      // close sidebar on mobile
+      if (window.innerWidth <= 768) sidebar.classList.remove('open');
+    }
+
+    function deleteThread(id) {
+      if (!confirm('Delete this chat thread?')) return;
+      const threads = getThreads();
+      delete threads[id];
+      saveThreads(threads);
+      const keys = Object.keys(threads);
+      if (keys.length === 0) {
+        // create a new default thread
+        const newId = Date.now().toString();
+        threads[newId] = { id: newId, title: 'New Chat', messages: [{ role: 'assistant', content: 'New thread. Ask me anything!' }], createdAt: newId, updatedAt: newId };
+        saveThreads(threads);
+        setCurrentThreadId(newId);
+      } else {
+        setCurrentThreadId(keys[0]);
+      }
+      renderThreads();
+      renderMessages();
+    }
+
+    function renameThread(id, newTitle) {
+      if (!newTitle || newTitle.trim() === '') return;
+      const threads = getThreads();
+      if (!threads[id]) return;
+      threads[id].title = newTitle.trim();
+      saveThreads(threads);
+      renderThreads();
+    }
+
+    // ===== RENDER THREADS =====
+    function renderThreads() {
+      const threads = getThreads();
+      const currentId = getCurrentThreadId();
+      threadsContainer.innerHTML = '';
+      // Sort by updatedAt descending (most recent first)
+      const sorted = Object.values(threads).sort((a, b) => parseInt(b.updatedAt) - parseInt(a.updatedAt));
+      sorted.forEach(thread => {
+        const div = document.createElement('div');
+        div.className = 'thread-item' + (thread.id === currentId ? ' active' : '');
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'thread-title';
+        titleSpan.textContent = thread.title || 'Untitled';
+        div.appendChild(titleSpan);
+
+        // Rename button
+        const renameBtn = document.createElement('button');
+        renameBtn.className = 'thread-rename';
+        renameBtn.textContent = '✏️';
+        renameBtn.title = 'Rename thread';
+        renameBtn.onclick = (e) => {
+          e.stopPropagation();
+          const newTitle = prompt('Enter new thread name:', thread.title);
+          if (newTitle !== null) renameThread(thread.id, newTitle);
         };
-        const downloadBtn = document.createElement('button');
-        downloadBtn.textContent = 'Download';
-        downloadBtn.onclick = () => {
-          const blob = new Blob([block.textContent], { type: 'text/plain' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'code.txt';
-          a.click();
-          URL.revokeObjectURL(url);
+        div.appendChild(renameBtn);
+
+        // Delete button
+        const delBtn = document.createElement('button');
+        delBtn.className = 'thread-delete';
+        delBtn.textContent = '🗑️';
+        delBtn.title = 'Delete thread';
+        delBtn.onclick = (e) => {
+          e.stopPropagation();
+          deleteThread(thread.id);
         };
-        actions.appendChild(copyBtn);
-        actions.appendChild(downloadBtn);
-        pre.style.position = 'relative';
-        pre.prepend(actions);
-        hljs.highlightElement(block);
+        div.appendChild(delBtn);
+
+        // Click to switch
+        div.addEventListener('click', () => {
+          if (thread.id !== currentId) {
+            setCurrentThreadId(thread.id);
+            renderThreads();
+            renderMessages();
+          }
+        });
+
+        threadsContainer.appendChild(div);
       });
-      return temp.innerHTML;
     }
 
     // ===== RENDER MESSAGES =====
     function renderMessages() {
+      const threadId = getCurrentThreadId();
+      const messages = getThreadMessages(threadId);
       messagesDiv.innerHTML = '';
       messages.forEach((msg, index) => {
         const wrapper = document.createElement('div');
@@ -740,47 +810,99 @@
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    // ===== ADD MESSAGE =====
-    function addMessage(role, content) {
-      messages.push({ role, content });
-      saveMessagesToStorage();
-      renderMessages();
+    // ===== RENDER MARKDOWN =====
+    function renderMarkdown(text) {
+      const rawHtml = marked.parse(text);
+      const temp = document.createElement('div');
+      temp.innerHTML = rawHtml;
+      temp.querySelectorAll('pre code').forEach((block) => {
+        const pre = block.parentElement;
+        const actions = document.createElement('div');
+        actions.className = 'code-actions';
+        const copyBtn = document.createElement('button');
+        copyBtn.textContent = 'Copy';
+        copyBtn.onclick = () => {
+          navigator.clipboard.writeText(block.textContent);
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+        };
+        const downloadBtn = document.createElement('button');
+        downloadBtn.textContent = 'Download';
+        downloadBtn.onclick = () => {
+          const blob = new Blob([block.textContent], { type: 'text/plain' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'code.txt';
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+        actions.appendChild(copyBtn);
+        actions.appendChild(downloadBtn);
+        pre.style.position = 'relative';
+        pre.prepend(actions);
+        hljs.highlightElement(block);
+      });
+      return temp.innerHTML;
     }
 
-    // ===== DELETE =====
+    // ===== THREAD OPERATIONS =====
+    function getCurrentMessages() {
+      const threadId = getCurrentThreadId();
+      return getThreadMessages(threadId);
+    }
+
+    function setCurrentMessages(messages) {
+      const threadId = getCurrentThreadId();
+      updateThreadMessages(threadId, messages);
+    }
+
+    // ===== ADD MESSAGE =====
+    function addMessage(role, content) {
+      const messages = getCurrentMessages();
+      messages.push({ role, content });
+      setCurrentMessages(messages);
+      renderMessages();
+      renderThreads(); // update thread list (title might change)
+    }
+
+    // ===== DELETE FROM INDEX =====
     function deleteFrom(index) {
       if (!confirm('Delete this and all later messages?')) return;
-      messages = messages.slice(0, index);
-      saveMessagesToStorage();
+      const messages = getCurrentMessages();
+      const newMessages = messages.slice(0, index);
+      setCurrentMessages(newMessages);
       renderMessages();
+      renderThreads();
     }
 
     // ===== EDIT =====
     function startEditing(index) {
+      const messages = getCurrentMessages();
       const msg = messages[index];
       if (msg.role !== 'user') return;
       input.value = msg.content;
       input.focus();
-      messages = messages.slice(0, index);
-      saveMessagesToStorage();
+      const newMessages = messages.slice(0, index);
+      setCurrentMessages(newMessages);
       renderMessages();
+      renderThreads();
     }
 
     // ===== REGENERATE =====
     async function regenerate(index) {
-      if (regenerating) return;
+      const messages = getCurrentMessages();
       const msg = messages[index];
       if (msg.role !== 'assistant') return;
       let userIndex = index - 1;
       while (userIndex >= 0 && messages[userIndex].role !== 'user') userIndex--;
       if (userIndex < 0) return;
       const userMsg = messages[userIndex];
-      messages = messages.slice(0, index);
-      saveMessagesToStorage();
+      const newMessages = messages.slice(0, index);
+      setCurrentMessages(newMessages);
       renderMessages();
-      regenerating = true;
+      renderThreads();
       await sendMessageWithText(userMsg.content);
-      regenerating = false;
     }
 
     // ===== SEND MESSAGE =====
@@ -804,7 +926,7 @@
         thinking: thinkToggle.checked,
         search: searchToggle.checked,
         fileContent: fileContent || null,
-        useMemory: memoryToggle.checked
+        useMemory: true // we keep memory on server as well, but we also store locally
       };
 
       fileInput.value = '';
@@ -816,9 +938,12 @@
       sendBtn.disabled = true;
       input.disabled = true;
 
+      // Add placeholder assistant message
+      const messages = getCurrentMessages();
       messages.push({ role: 'assistant', content: '' });
-      saveMessagesToStorage();
+      setCurrentMessages(messages);
       renderMessages();
+      renderThreads();
       const assistantIndex = messages.length - 1;
 
       const typingDiv = document.createElement('div');
@@ -838,9 +963,11 @@
 
         if (!response.ok) {
           const err = await response.json();
-          messages[assistantIndex].content = `⚠️ ${err.error || 'Something went wrong.'}`;
-          saveMessagesToStorage();
+          const currentMsgs = getCurrentMessages();
+          currentMsgs[assistantIndex].content = `⚠️ ${err.error || 'Something went wrong.'}`;
+          setCurrentMessages(currentMsgs);
           renderMessages();
+          renderThreads();
           sendBtn.disabled = false;
           input.disabled = false;
           input.focus();
@@ -866,14 +993,18 @@
                 const json = JSON.parse(payload);
                 if (json.content) {
                   fullContent += json.content;
-                  messages[assistantIndex].content = fullContent;
-                  saveMessagesToStorage();
+                  const currentMsgs = getCurrentMessages();
+                  currentMsgs[assistantIndex].content = fullContent;
+                  setCurrentMessages(currentMsgs);
                   renderMessages();
+                  renderThreads();
                 }
                 if (json.error) {
-                  messages[assistantIndex].content = `⚠️ ${json.error}`;
-                  saveMessagesToStorage();
+                  const currentMsgs = getCurrentMessages();
+                  currentMsgs[assistantIndex].content = `⚠️ ${json.error}`;
+                  setCurrentMessages(currentMsgs);
                   renderMessages();
+                  renderThreads();
                 }
               } catch (e) {}
             }
@@ -881,9 +1012,11 @@
         }
       } catch (error) {
         typingDiv.remove();
-        messages[assistantIndex].content = '❌ Failed to connect to backend. Ensure Render is awake.';
-        saveMessagesToStorage();
+        const currentMsgs = getCurrentMessages();
+        currentMsgs[assistantIndex].content = '❌ Failed to connect to backend. Ensure Render is awake.';
+        setCurrentMessages(currentMsgs);
         renderMessages();
+        renderThreads();
         console.error(error);
       }
 
@@ -892,51 +1025,27 @@
       input.focus();
     }
 
-    // ===== NEW CHAT =====
-    function newChat() {
-      if (messages.length > 1 && !confirm('Start a new chat? (All local and server memory will be cleared)')) return;
-      fetch(CLEAR_URL, { method: 'POST' }).catch(() => {});
-      messages = [{ role: 'assistant', content: 'New chat started. Ask me anything!' }];
-      saveMessagesToStorage();
-      renderMessages();
-      sidebar.classList.remove('open');
+    // ===== NEW THREAD =====
+    function newThread() {
+      createNewThread();
     }
-    newChatBtn.addEventListener('click', newChat);
-    clearMemoryBtn.addEventListener('click', newChat);
 
-    // ===== EXPORT =====
-    exportChatBtn.addEventListener('click', async () => {
-      try {
-        const res = await fetch(EXPORT_URL);
-        const data = await res.json();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `onyx_chat_${new Date().toISOString().slice(0,10)}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } catch (e) {
-        alert('Could not export chat.');
-      }
-    });
+    // ===== CLEAR MEMORY (server side) - not needed for local threads, but we keep for sync =====
+    // Not used directly, but we can call it if needed.
 
-    // ===== SAVE PERSONALITY =====
-    savePersonalityBtn.addEventListener('click', async () => {
-      const prompt = personalityInput.value.trim();
-      if (!prompt) return alert('Please enter a system prompt.');
-      try {
-        const res = await fetch(SYSTEM_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt }),
-        });
-        if (res.ok) alert('Personality updated!');
-        else alert('Failed to update personality.');
-      } catch (e) {
-        alert('Error saving personality.');
-      }
-    });
+    // ===== EXPORT (export current thread or all?) =====
+    // We'll export all threads as a single JSON
+    function exportAllThreads() {
+      const threads = getThreads();
+      const data = JSON.stringify(threads, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `onyx_threads_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
 
     // ===== THEME =====
     let darkMode = true;
@@ -946,7 +1055,7 @@
       themeToggle.textContent = darkMode ? '🌙' : '☀️';
     });
 
-    // ===== SIDEBAR =====
+    // ===== SIDEBAR TOGGLE =====
     hamburgerBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
     document.addEventListener('click', (e) => {
       if (window.innerWidth <= 768) {
@@ -981,8 +1090,39 @@
       reader.readAsText(file);
     });
 
+    // ===== NEW THREAD BUTTON =====
+    newThreadBtn.addEventListener('click', newThread);
+
+    // ===== EXPORT BUTTON (add to sidebar) =====
+    // We'll add a small export button in the sidebar footer
+    // Or we can add an action button in the sidebar-actions area.
+    // Let's add it dynamically in the sidebar footer.
+    const footer = document.querySelector('.sidebar-footer');
+    const exportBtn = document.createElement('button');
+    exportBtn.textContent = '📤 Export All Threads';
+    exportBtn.style.cssText = 'background: #21262d; border: none; color: #c9d1d9; padding: 4px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-top: 8px; width: 100%;';
+    exportBtn.onclick = exportAllThreads;
+    footer.appendChild(exportBtn);
+
+    // Also we can add a clear all threads button (danger)
+    const clearAllBtn = document.createElement('button');
+    clearAllBtn.textContent = '🗑️ Delete All Threads';
+    clearAllBtn.style.cssText = 'background: #da3633; border: none; color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-top: 4px; width: 100%;';
+    clearAllBtn.onclick = () => {
+      if (!confirm('Delete ALL threads? This cannot be undone.')) return;
+      localStorage.removeItem(THREADS_KEY);
+      localStorage.removeItem(CURRENT_THREAD_KEY);
+      // reload the page to reset
+      location.reload();
+    };
+    footer.appendChild(clearAllBtn);
+
     // ===== INIT =====
-    loadMessagesFromStorage();
+    // Ensure we have at least one thread
+    getThreads(); // initializes if empty
+    const currentId = getCurrentThreadId();
+    setCurrentThreadId(currentId);
+    renderThreads();
     renderMessages();
   </script>
 </body>
