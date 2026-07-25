@@ -3,13 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Onyx AI v3.0</title>
-  <!-- Markdown & Highlight.js -->
+  <title>Onyx AI v3.1</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <style>
-    /* ----- GLOBAL ----- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -28,6 +26,9 @@
     body.light .main-chat { background: #f6f8fa; }
     body.light .chat-header { border-bottom: 1px solid #d0d7de; }
     body.light .message.user { background: #d0d7de; color: #1f2328; }
+    body.light .message.user code:not(pre code) { background: #b0b8c0; color: #d73a49; }
+    body.light .message.user pre { background: #e1e4e8; border-color: #d0d7de; }
+    body.light .message.user pre code { color: #1f2328; }
     body.light .message.assistant { background: #ffffff; border: 1px solid #d0d7de; color: #1f2328; }
     body.light .input-area { border-top: 1px solid #d0d7de; background: #f6f8fa; }
     body.light .input-wrapper { background: #ffffff; border-color: #d0d7de; }
@@ -40,6 +41,8 @@
     body.light .new-chat-btn:hover { background: #2c974b; }
     body.light #sendBtn { background: #2da44e; }
     body.light #sendBtn:hover { background: #2c974b; }
+    body.light .code-actions button { background: #d0d7de; color: #1f2328; }
+    body.light .code-actions button:hover { background: #b0b8c0; }
 
     /* ----- SIDEBAR ----- */
     .sidebar {
@@ -241,6 +244,33 @@
       border-bottom-right-radius: 4px;
       color: #f0f6fc;
     }
+    /* ----- Markdown styles for USER messages ----- */
+    .message.user h1, .message.user h2, .message.user h3 { margin: 8px 0 4px 0; color: #f0f6fc; }
+    .message.user p { margin: 4px 0; }
+    .message.user ul, .message.user ol { padding-left: 24px; margin: 4px 0; }
+    .message.user code:not(pre code) {
+      background: #2d3748;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #f0883e;
+    }
+    .message.user pre {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 12px;
+      margin: 8px 0;
+      position: relative;
+      overflow-x: auto;
+    }
+    .message.user pre code {
+      font-size: 14px;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      color: #e6edf3;
+    }
+
+    /* ----- Assistant message styles (existing) ----- */
     .message.assistant {
       background: #161b22;
       align-self: flex-start;
@@ -428,6 +458,7 @@
       .chat-header { padding: 12px 16px; }
       #messages { padding: 16px; }
       .input-area { padding: 12px 16px 20px; }
+      .message { max-width: 92%; }
     }
   </style>
 </head>
@@ -456,7 +487,7 @@
       <button id="clearMemoryBtn">🗑️ Clear Memory</button>
     </div>
 
-    <div class="sidebar-footer">Onyx v3.0 · Memory Enabled</div>
+    <div class="sidebar-footer">Onyx v3.1 · URL Scraper + Markdown</div>
   </div>
 
   <!-- MAIN CHAT -->
@@ -470,13 +501,15 @@
     </div>
 
     <div id="messages">
-      <div class="message assistant">Hello, I'm **Onyx v3.0**. I have memory, can search the web, think step‑by‑step, read files, and adapt to your personality. How can I help?</div>
+      <div class="message assistant"># Welcome to Onyx v3.1 🌐
+
+Paste any URL and I'll scrape it. Type with **Markdown**, use `# headings`, and stack your messages beautifully!</div>
     </div>
 
     <div class="input-area">
       <div class="input-row">
         <div class="input-wrapper">
-          <textarea id="userInput" rows="1" placeholder="Ask me anything..."></textarea>
+          <textarea id="userInput" rows="1" placeholder="Paste a URL or ask anything..."></textarea>
           <button id="sendBtn">Send</button>
         </div>
       </div>
@@ -527,7 +560,7 @@
       themeToggle.textContent = darkMode ? '🌙' : '☀️';
     });
 
-    // ===== SIDEBAR TOGGLE (Mobile) =====
+    // ===== SIDEBAR TOGGLE =====
     hamburgerBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
     document.addEventListener('click', (e) => {
       if (window.innerWidth <= 768) {
@@ -569,7 +602,6 @@
       temp.innerHTML = rawHtml;
       temp.querySelectorAll('pre code').forEach((block) => {
         const pre = block.parentElement;
-        // Add copy and download buttons
         const actions = document.createElement('div');
         actions.className = 'code-actions';
         const copyBtn = document.createElement('button');
@@ -599,11 +631,11 @@
       return temp.innerHTML;
     }
 
-    // ===== ADD MESSAGE =====
+    // ===== ADD MESSAGE (NOW WITH MARKDOWN FOR BOTH) =====
     function addMessage(role, content) {
       const div = document.createElement('div');
       div.className = `message ${role}`;
-      if (role === 'assistant') {
+      if (role === 'assistant' || role === 'user') {
         div.innerHTML = renderMarkdown(content);
       } else {
         div.textContent = content;
@@ -621,12 +653,11 @@
       sendBtn.disabled = true;
       input.disabled = true;
 
-      // Show user message (combine text and file info)
+      // Show user message with Markdown
       let displayMsg = text || '📎 Uploaded file';
-      if (fileContent) displayMsg += `\n📎 File: ${fileName.textContent || 'uploaded file'}`;
+      if (fileContent) displayMsg += `\n\n📎 **File:** ${fileName.textContent || 'uploaded file'}`;
       addMessage('user', displayMsg);
 
-      // Prepare payload
       const payload = {
         message: text,
         thinking: thinkToggle.checked,
@@ -635,15 +666,12 @@
         useMemory: memoryToggle.checked
       };
 
-      // Clear file after sending
       fileInput.value = '';
       fileName.textContent = '';
       fileContent = null;
-
       input.value = '';
       input.style.height = 'auto';
 
-      // Typing indicator
       const typingDiv = document.createElement('div');
       typingDiv.className = 'typing-indicator';
       typingDiv.textContent = 'Onyx is thinking...';
@@ -694,7 +722,7 @@
                 if (json.error) {
                   assistantMsg.innerHTML = `⚠️ ${json.error}`;
                 }
-              } catch (e) { /* skip incomplete json */ }
+              } catch (e) {}
             }
           }
         }
@@ -708,14 +736,12 @@
       input.focus();
     }
 
-    // ===== NEW CHAT (Clear UI only) =====
+    // ===== NEW CHAT =====
     function newChat() {
       if (messagesDiv.children.length > 1 && !confirm('Start a new chat? (Memory will be cleared)')) return;
-      // Clear backend memory
       fetch(CLEAR_URL, { method: 'POST' }).catch(() => {});
-      // Clear UI
       messagesDiv.innerHTML = '';
-      addMessage('assistant', 'Memory cleared. How can I help you?');
+      addMessage('assistant', 'Memory cleared. Paste a URL or ask me anything!');
       sidebar.classList.remove('open');
     }
     newChatBtn.addEventListener('click', newChat);
@@ -755,10 +781,10 @@
       }
     });
 
-    // ===== WELCOME MESSAGE (Markdown) =====
+    // ===== WELCOME MESSAGE =====
     const welcome = messagesDiv.querySelector('.message.assistant');
     if (welcome) {
-      welcome.innerHTML = renderMarkdown('Hello, I\'m **Onyx v3.0**. I have memory, can search the web, think step‑by‑step, read files, and adapt to your personality. How can I help?');
+      welcome.innerHTML = renderMarkdown('# Welcome to Onyx v3.1 🌐\n\nPaste any URL and I\'ll scrape it. Type with **Markdown**, use `# headings`, and stack your messages beautifully!');
     }
   </script>
 </body>
